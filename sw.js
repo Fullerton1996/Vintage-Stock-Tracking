@@ -1,4 +1,5 @@
-const CACHE_NAME = 'vintique-cache-v1';
+
+const CACHE_NAME = 'vintique-cache-v2';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -15,32 +16,7 @@ self.addEventListener('install', event => {
         return cache.addAll(urlsToCache);
       })
   );
-});
-
-self.addEventListener('fetch', event => {
-  // We only want to handle GET requests.
-  if (event.request.method !== 'GET') {
-    return;
-  }
-
-  event.respondWith(
-    caches.match(event.request)
-      .then(cachedResponse => {
-        // Return the cached response if it exists.
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-
-        // If the request is not in the cache, fetch it from the network.
-        return fetch(event.request).catch(() => {
-          // If the network fetch fails (e.g., offline) and it's a navigation request,
-          // serve the main index.html as a fallback. This is key for SPAs.
-          if (event.request.mode === 'navigate') {
-            return caches.match('/index.html');
-          }
-        });
-      })
-  );
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', event => {
@@ -54,6 +30,31 @@ self.addEventListener('activate', event => {
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', event => {
+  // For navigation requests, always serve the SPA shell.
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      caches.match('/index.html')
+        .then(response => {
+          return response || fetch(event.request);
+        })
+    );
+    return;
+  }
+
+  // For all other requests (assets, etc.), use a cache-first strategy.
+  event.respondWith(
+    caches.match(event.request)
+      .then(response => {
+        // Cache hit - return response
+        if (response) {
+          return response;
+        }
+        return fetch(event.request);
+      })
   );
 });

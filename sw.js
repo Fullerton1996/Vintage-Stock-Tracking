@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'vintique-cache-v2';
+const CACHE_NAME = 'vintique-cache-v3';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -35,13 +35,13 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  // For navigation requests, always serve the SPA shell.
+  // For navigation requests, always serve the SPA shell (App Shell model).
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      caches.match('/index.html')
-        .then(response => {
-          return response || fetch(event.request);
-        })
+      caches.match('/index.html').then(response => {
+        // Return the cached index.html, or fetch it from the network if it's not in the cache.
+        return response || fetch('/index.html');
+      })
     );
     return;
   }
@@ -54,6 +54,7 @@ self.addEventListener('fetch', event => {
         if (response) {
           return response;
         }
+        // Not in cache - go to the network
         return fetch(event.request);
       })
   );
